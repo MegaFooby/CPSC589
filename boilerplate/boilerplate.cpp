@@ -12,6 +12,11 @@
 //			John Hall, University of Calgary
 // Date:    December 2015
 // ==========================================================================
+// CPSC 453 Assignment 1: Boilerplate modified to show several patterns
+// Author: Cameron Davies 30003456
+// Date: January 2018
+// Some code is loosely based on Jeremy Hart's Dragon Curve
+// ==========================================================================
 
 #include <iostream>
 #include <fstream>
@@ -21,11 +26,12 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <math.h>
 #include <vector>
+
+#include <stdlib.h>
+#include <math.h>
 
 using namespace std;
 using namespace glm;
@@ -37,7 +43,10 @@ bool CheckGLErrors();
 
 string LoadSource(const string &filename);
 GLuint CompileShader(GLenum shaderType, const string &source);
-GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint tcsShader, GLuint tesShader);
+GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
+
+int iterations = 0;
+char shape = 0;
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -48,23 +57,17 @@ GLuint InitializeShaders()
 	// load shader source from files
 	string vertexSource = LoadSource("shaders/vertex.glsl");
 	string fragmentSource = LoadSource("shaders/fragment.glsl");
-	string tcsSource = LoadSource("shaders/tessControl.glsl");
-	string tesSource = LoadSource("shaders/tessEval.glsl");
 	if (vertexSource.empty() || fragmentSource.empty()) return false;
 
 	// compile shader source into shader objects
 	GLuint vertex = CompileShader(GL_VERTEX_SHADER, vertexSource);
 	GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, fragmentSource);
-	GLuint tcs = CompileShader(GL_TESS_CONTROL_SHADER, tcsSource);
-	GLuint tes = CompileShader(GL_TESS_EVALUATION_SHADER, tesSource);
 
 	// link shader program
-	GLuint program = LinkProgram(vertex, fragment, tcs, tes);
+	GLuint program = LinkProgram(vertex, fragment);
 
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
-	glDeleteShader(tcs);
-	glDeleteShader(tes);
 
 	// check for OpenGL errors and return false if error occurred
 	return program;
@@ -108,10 +111,10 @@ bool InitializeVAO(Geometry *geometry){
 	glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
 	glVertexAttribPointer(
 		VERTEX_INDEX,		//Attribute index 
-		4, 					//# of components
+		2, 					//# of components
 		GL_FLOAT, 			//Type of component
 		GL_FALSE, 			//Should be normalized?
-		sizeof(vec4),		//Stride - can use 0 if tightly packed
+		sizeof(vec2),		//Stride - can use 0 if tightly packed
 		0);					//Offset to first element
 	glEnableVertexAttribArray(VERTEX_INDEX);
 
@@ -134,13 +137,13 @@ bool InitializeVAO(Geometry *geometry){
 }
 
 // create buffers and fill with geometry data, returning true if successful
-bool LoadGeometry(Geometry *geometry, vec4 *vertices, vec3 *colours, int elementCount)
+bool LoadGeometry(Geometry *geometry, vec2 *vertices, vec3 *colours, int elementCount)
 {
 	geometry->elementCount = elementCount;
 
 	// create an array buffer object for storing our vertices
 	glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec4)*geometry->elementCount, vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec2)*geometry->elementCount, vertices, GL_STATIC_DRAW);
 
 	// create another one for storing our colours
 	glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
@@ -168,11 +171,23 @@ void DestroyGeometry(Geometry *geometry)
 
 void RenderScene(Geometry *geometry, GLuint program)
 {
+	// clear screen to a dark grey colour
+	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
 	// bind our shader program and the vertex array object containing our
 	// scene geometry, then tell OpenGL to draw our geometry
 	glUseProgram(program);
 	glBindVertexArray(geometry->vertexArray);
-	glDrawArrays(GL_PATCHES, 0, geometry->elementCount);
+	//rendering lines or triangles based on the shape
+	if(shape == 2) {
+		glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
+	}
+	else if(shape == 4) {
+		glDrawArrays(GL_POINTS, 0, geometry->elementCount);
+	} else{
+		glDrawArrays(GL_LINES, 0, geometry->elementCount);
+	}
 
 	// reset state to default (no shader or geometry bound)
 	glBindVertexArray(0);
@@ -192,99 +207,119 @@ void ErrorCallback(int error, const char* description)
 	cout << description << endl;
 }
 
-char press = 0;
+//Draws the parametric spiral
+#define PI 3.14159265358979323846
+void drawSpiral(float x, float y, int iterate, vector<vec2>* points, vector<vec3>* colours) {
+	points->clear();
+	colours->clear();
+	if(iterate > 50) {iterate = 50;iterations = 50;}
+	iterate++;
+	float colour = 0.f;
+	float colourScale = 0.001/(iterate*2*PI);
+	float oldx = x;
+	float oldy = y;
+	for(float u = 0; u < iterate*2*PI; u+=0.001) {
+		float newx = (u*cos(u))/((iterate*3.5)*PI);
+		float newy = -(u*sin(u))/((iterate*3.5)*PI);
+		points->push_back(vec2(oldx, oldy));
+		points->push_back(vec2(newx, newy));
+		oldx = newx;
+		oldy = newy;
+		for(int j = 0; j < 2; j++) {
+			colours->push_back(vec3(0, 0, colour));
+		}
+		colour += colourScale;
+	}
+}
+
+void transform(float x, float y, float& writex, float& writey, int num) {
+	if(num%100 == 0) {
+		writex = 0.f;
+		writey = 0.16f*y;
+		return;
+	}
+	else if(num%100 <= 85) {
+		writex = 0.85f*x + 0.04f*y;
+		writey = -0.04f*x + 0.85f*y + 1.6f;
+		return;
+	}
+	else if(num%100 <= 92) {
+		writex = 0.2f*x - 0.26f*y;
+		writey = 0.23f*x + 0.22f*y + 1.6f;
+		return;
+	}
+	else {
+		writex = -0.15f*x + 0.28f*y;
+		writey = 0.26f*x + 0.24f*y + 0.44f;
+		return;
+	}
+}
+
+void drawFern(float x, float y, vector<vec2>* points, vector<vec3>* colours) {
+	points->clear();
+	colours->clear();
+	float scale = 0.15f;
+	int iterate = 1000000;
+	vector<vec2> point = {vec2(0.f, 0.f)};
+	for(int i = 0; i < iterate; i++) {
+		float newx = 0.f;
+		float newy = 0.f;
+		int ran = rand()%point.size();
+		float oldx = point[ran].x;
+		float oldy = point[ran].y;
+		transform(oldx, oldy, newx, newy, rand()%100);
+		points->push_back(vec2((newx*scale)+x, (newy*scale)+y));
+		point.push_back(vec2(newx, newy));
+		colours->push_back(vec3(0, 1, 0));
+		colours->push_back(vec3(0, 1, 0));
+	}
+}
+
+//Calls one of the 5 functions above based on the shape variable
+void generateShape(int iterate, vector<vec2>* points, vector<vec3>* colours) {
+	if(shape == 1)
+		drawSpiral(0.f, 0.f, iterate, points, colours);
+	else if(shape == 4)
+		drawFern(0.f, -0.7f, points, colours);
+}
+
 // handles keyboard input events
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS) {
-		if(key == GLFW_KEY_ESCAPE)
+		if(key == GLFW_KEY_ESCAPE) {
 			glfwSetWindowShouldClose(window, GL_TRUE);
-		
-		if(key == GLFW_KEY_KP_ADD) {
-			press = 1;
 		}
-		else if(key == GLFW_KEY_KP_SUBTRACT) {
-			press = 2;
+		if(key == GLFW_KEY_1) {
+			shape = 0;
+			iterations = 0;
 		}
-		else if(key == GLFW_KEY_A) {
-			press = -2;
+		if(key == GLFW_KEY_2) {
+			shape = 1;
+			iterations = 0;
 		}
-	}
-}
-float scroll = 0.f;
-void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-	scroll = yoffset;
-}
-
-void getPoints(vector<vec4> *toRender, vector<vec3> *colours, vector<vec4> *points, int order, vec3 colour) {
-	toRender->clear();
-	colours->clear();
-	vector<float> knots;
-	//float knot = 0;
-	unsigned int i;
-	for(i = 0; i < points->size()+order; i++) {
-		if((int)i < order) {
-			knots.push_back(0.f);
-		} else if(i >= points->size()) {
-			knots.push_back(1.f);
-		} else {
-			knots.push_back((i-order+1)/(float)(points->size()-order+1));
+		if(key == GLFW_KEY_3) {
+			shape = 2;
+			iterations = 0;
 		}
-		/*if((int)i >= order && i < points->size()) {
-			knot += 1.f/(float)(order-1);
+		if(key == GLFW_KEY_4) {
+			shape = 3;
+			iterations = 0;
 		}
-		knots.push_back(knot);*/
-		//cout << knots[i] << "\t";
-	}
-	//cout << endl;
-	/*for(unsigned int j = 0; j < points->size(); j++) {
-		for(i = i; i < points->size(); i++) {
-			toRender->push_back(vec4((*points)[i].x, (*points)[i].y, knots[i], (*points)[i].z));
-			colours->push_back(colour);
+		if(key == GLFW_KEY_5) {
+			shape = 4;
+			iterations = 0;
 		}
-		for(i = points->size(); i < points->size()+order; i++) {
-			toRender->push_back(vec4(0, 0, knots[i], 0));
-			colours->push_back(colour);
+		//limits between 0 and 10 iterations
+		if(key == GLFW_KEY_W) {
+			iterations++;
 		}
-	}*/
-	for(i = 0; i < points->size(); i++) {
-		toRender->push_back(vec4((*points)[i].x, (*points)[i].y, knots[i], (*points)[i].w));
-		colours->push_back(colour);
-	}
-	for(i = points->size(); i < points->size()+order; i++) {
-		toRender->push_back(vec4(0, 0, knots[i], 0));
-		colours->push_back(colour);
-	}
-}
-
-float deBoor(int i, float u, int order, float knots[]) {
-	if(order == 1) {
-		if(knots[i] <= u && u < knots[i+1]) {
-			return 1.f;
-		} else {
-			return 0.f;
+		else if(key == GLFW_KEY_S) {
+			if(--iterations < 0) {
+				iterations++;
+			}
 		}
 	}
-	float value = 0;
-	float den = knots[i+order-1]-knots[i];
-	if(den != 0)
-	value += (u-knots[i])/(den) * deBoor(i, u, order-1, knots);
-	den = knots[i+order]-knots[i+1];
-	if(den != 0)
-	value += (knots[i+order]-u)/(den) * deBoor(i+1, u, order-1, knots);
-	return value;
-}
-
-void geopoints(vector<vec4> *toRender, vector<vec3> *colours, vector<vec4> *points, vector<float> *knots, float u, int order, vec3 colour) {
-	order--;
-	if(order == 1) return;
-	for(unsigned int i = 0; i < points->size()-1; i++) {
-		float N = deBoor(i, u, order, knots->data());
-		toRender->push_back((*points)[i] * N);
-		N = deBoor(i+1, u, order, knots->data());
-		toRender->push_back((*points)[i+1] * N);
-	}
-	geopoints(toRender, colours, points, knots, u, order, colour);
 }
 
 // ==========================================================================
@@ -305,8 +340,7 @@ int main(int argc, char *argv[])
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_SAMPLES, 4);
-	int width = 1024, height = 1024;
+	int width = 512, height = 512;
 	window = glfwCreateWindow(width, height, "CPSC 453 OpenGL Boilerplate", 0, 0);
 	if (!window) {
 		cout << "Program failed to create GLFW window, TERMINATING" << endl;
@@ -316,7 +350,6 @@ int main(int argc, char *argv[])
 
 	// set keyboard callback function and make our context current (active)
 	glfwSetKeyCallback(window, KeyCallback);
-	glfwSetScrollCallback(window, ScrollCallback);
 	glfwMakeContextCurrent(window);
 
 	//Intialize GLAD
@@ -336,188 +369,34 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
-	vector<vec4> points;
-	vector<vec4> toRender;
+	vector<vec2> points;
 	vector<vec3> colours;
-	vector<vec3> pointcolours;
-	vec3 pointcolour = vec3(0.f, .3f, 1.f);
-	int order = 3;
-	float increment = 0;
-	vec3 colour = vec3(.9f, .9f, .9f);
-	vector<vec4> geo;
-	vector<vec3> geocolours;
-	vec3 geocolour = vec3(.9f, .0f, .0f);
 	
-	points.push_back(vec4(-.5f, -.25f, 0.f, 1.f));
-	points.push_back(vec4(-.5f, 0.f, .25f, 1.f));
-	points.push_back(vec4(.0f, .25f, .5f, 1.f));
-	points.push_back(vec4(.5f, 0.f, .75f, 1.f));
-	points.push_back(vec4(.5f, -.25f, 1.f, 1.f));
-	pointcolours.push_back(pointcolour);
-	pointcolours.push_back(pointcolour);
-	pointcolours.push_back(pointcolour);
-	pointcolours.push_back(pointcolour);
-	pointcolours.push_back(pointcolour);
+	generateShape(4, &points, &colours);
 	
-	getPoints(&toRender, &colours, &points, order, colour);
+	int lastIterationNum = 0;
+	char lastShape = 0;
 	
-	glUseProgram(program);
-	GLint orderGL = glGetUniformLocation(program, "order");
-	glUniform1i(orderGL, order);
-	GLint circlesGL = glGetUniformLocation(program, "circles");
-	glUniform1i(circlesGL, 0);
-	GLint pointsGL = glGetUniformLocation(program, "points");
-	glUniform1i(pointsGL, points.size());
 	// call function to create and fill buffers with geometry data
 	Geometry geometry;
 	if (!InitializeVAO(&geometry))
 		cout << "Program failed to intialize geometry!" << endl;
 
-	if(!LoadGeometry(&geometry, toRender.data(), colours.data(), toRender.size()))
+	if(!LoadGeometry(&geometry, points.data(), colours.data(), points.size()))
 		cout << "Failed to load geometry" << endl;
-	
-	glPatchParameteri(GL_PATCH_VERTICES, points.size()+order);
-
-	bool LMBpressed = false;
-	int selected = -1;
 
 	// run an event-triggered main loop
 	while (!glfwWindowShouldClose(window))
 	{
-		double xpos, ypos;
-		glfwGetCursorPos(window, &xpos, &ypos);
-		xpos = (xpos - (width/2))/(width/2);
-		ypos = -(ypos - (height/2))/(height/2);
-		int closest = 0;
-		float distance = pow(xpos - points[0].x, 2) + pow(ypos - points[0].y, 2);
-		for(unsigned int i = 1; i < points.size(); i++) {
-			float temp = pow(xpos - points[i].x, 2) + pow(ypos - points[i].y, 2);
-			if(temp < distance) {
-				distance = temp;
-				closest = i;
-			}
-		}
-		if(!LMBpressed && distance < .001f && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {//select point
-			if(selected >= 0) {
-				pointcolours[selected] = pointcolour;
-			}
-			selected = closest;
-			LMBpressed = true;
-		}
-		
-		if(selected >= 0 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {//move point
-			points[selected].x = xpos;
-			points[selected].y = ypos;
-			getPoints(&toRender, &colours, &points, order, colour);
-		}
-		
-		if(selected < 0 && !LMBpressed && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {//element added
-			LMBpressed = true;
-			//points.insert(position, vec2(xpos, ypos)); //create intuitive way to find position
-			points.push_back(vec4(xpos, ypos, points.size(), 1.f));
-			pointcolours.push_back(pointcolour);
-			//get points here
-			getPoints(&toRender, &colours, &points, order, colour);
-		}
-		
-		if(scroll != 0.f) {
-			if(pow(xpos - points[selected].x, 2) + pow(ypos - points[selected].y, 2) < .001f) {
-				points[selected].w += scroll/10.f;
-				if(points[selected].w <= 0.f) {
-					points[selected].w -= scroll/10.f;
-				}
-				getPoints(&toRender, &colours, &points, order, colour);
-			}
-			scroll = 0.f;
-		}
-		
-		if(selected >= 0 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {//deselect point
-			pointcolours[selected] = pointcolour;
-			selected = -1;
-		}
-		
-		if(selected >= 0 && glfwGetKey(window, GLFW_KEY_DELETE) && points.size() > 1) {//element removed
-			pointcolours[selected] = pointcolour;
-			points.erase(points.begin()+selected); //create intuitive way to find position
-			pointcolours.pop_back();
-			selected = -1;
-			//get points here
-			getPoints(&toRender, &colours, &points, order, colour);
-		}
-		
-		if(!(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)) {//LMB reset
-			LMBpressed = false;
-		}
-		if(selected >= 0) {//makes sure the selected point is highlighted
-			pointcolours[selected] = vec3(0.f, 1.f, 0.f);
-		}
-		
-		if(press == 1) {//increase order
-			if(++order > (int)points.size())
-				order--;
-			glUseProgram(program);
-			glUniform1i(orderGL, order);
-			press = 0;
-			getPoints(&toRender, &colours, &points, order, colour);
-		}
-		if(press == 2) {//decrease order
-			if(--order == 1)
-				order++;
-			glUseProgram(program);
-			glUniform1i(orderGL, order);
-			press = 0;
-			getPoints(&toRender, &colours, &points, order, colour);
-		}
-		if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {//increase parameter increment
-			increment += 0.01f;
-			if(increment > 1.f)
-				increment -= 0.01f;
-		}
-		if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {//decrease parameter increment
-			increment -= 0.01f;
-			if(increment < 1)
-				increment += 0.01f;
+		if(iterations != lastIterationNum || shape != lastShape){
+			generateShape(iterations, &points, &colours);
+			LoadGeometry(&geometry, points.data(), colours.data(), points.size());
+			lastIterationNum = iterations;
+			lastShape = shape;
 		}
 		
 		// call function to draw our scene
-		// clear screen to a dark grey colour
-		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(program);
-		glPatchParameteri(GL_PATCH_VERTICES, points.size()+order);
-		glUniform1i(circlesGL, 0);
-		LoadGeometry(&geometry, toRender.data(), colours.data(), toRender.size());
 		RenderScene(&geometry, program);
-		
-		glUseProgram(program);
-		glPatchParameteri(GL_PATCH_VERTICES, 1);
-		glUniform1i(circlesGL, 1);
-		LoadGeometry(&geometry, points.data(), pointcolours.data(), points.size());
-		RenderScene(&geometry, program);
-		if(press == -2) {
-			press++;
-			vector<float> knots;
-			unsigned int i;
-			for(i = 0; i < points.size()+order; i++) {
-				if((int)i < order) {
-					knots.push_back(0.f);
-				} else if(i >= points.size()) {
-					knots.push_back(1.f);
-				} else {
-					knots.push_back((i-order+1)/(float)(points.size()-order+1));
-				}
-			}
-			geo.clear();
-			geocolours.clear();
-			geopoints(&geo, &geocolours, &points, &knots, increment, order, geocolour);
-		}
-		if(press == -1) {
-			glUseProgram(program);
-			glPatchParameteri(GL_PATCH_VERTICES, 2);
-			glUniform1i(circlesGL, 2);
-			LoadGeometry(&geometry, geo.data(), geocolours.data(), geo.size());
-			RenderScene(&geometry, program);
-		}
 
 		glfwSwapBuffers(window);
 
@@ -630,7 +509,7 @@ GLuint CompileShader(GLenum shaderType, const string &source)
 }
 
 // creates and returns a program object linked from vertex and fragment shaders
-GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint tcsShader, GLuint tesShader)
+GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader)
 {
 	// allocate program object name
 	GLuint programObject = glCreateProgram();
@@ -638,8 +517,6 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint tcsShader,
 	// attach provided shader objects to this program
 	if (vertexShader)   glAttachShader(programObject, vertexShader);
 	if (fragmentShader) glAttachShader(programObject, fragmentShader);
-	if (tcsShader) glAttachShader(programObject, tcsShader);
-	if (tesShader) glAttachShader(programObject, tesShader);
 
 	// try linking the program with given attachments
 	glLinkProgram(programObject);
