@@ -202,6 +202,8 @@ void ErrorCallback(int error, const char* description)
 
 // handles keyboard input events
 int press = 1;
+
+	bool render_model = false;
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS) {
@@ -213,6 +215,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		}
 		else if(key == GLFW_KEY_2) {
 			press = 2;
+		}
+		else if(key == GLFW_KEY_3) {
+			render_model = true;
 		}
 	}
 }
@@ -281,7 +286,6 @@ int main(int argc, char *argv[])
 	if(!LoadGeometry(&geometry, points.data(), colours.data(), points.size()))
 		cout << "Failed to load geometry" << endl;
 
-	bool render_model = false;
 
 	// run an event-triggered main loop
 	while (!glfwWindowShouldClose(window))
@@ -319,18 +323,19 @@ int main(int argc, char *argv[])
 		if(render_model) {
 			for(int i = 0; i < points.size(); i++) {
 				int start = points2[0].x;
-				for(int j = 1; j < points2.size(); i++) {
+				for(int j = 1; j < points2.size(); j++) {
 					if(start > points2[j].x) {
 						start = j;
 					}
 				}
 				vec2 translate = points[i] - points2[start];
 				int end = points2[0].x;
-				for(int j = 1; j < points2.size(); i++) {
+				for(int j = 1; j < points2.size(); j++) {
 					if(end < points2[j].x) {
 						end = j;
 					}
 				}
+				cout << start << " " << end << endl;
 				
 			}
 		}
