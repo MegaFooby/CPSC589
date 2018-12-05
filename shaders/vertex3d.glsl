@@ -12,12 +12,12 @@ layout(location = 0) in vec3 VertexPosition;
 layout(location = 1) in vec3 VertexColour;
 
 uniform mat4 modelViewProjection;
-//uniform vec3 light;
+uniform vec3 light;
 uniform vec3 cameraPos;
 out vec3 colour;
 
 //out vec3 normal;
-//out vec3 lightVec;
+out vec3 lightVec;
 out vec3 cameraVec;
 
 void main()
@@ -26,7 +26,12 @@ void main()
     gl_Position = modelViewProjection*vec4(VertexPosition, 1.0);
     colour = VertexColour;
     
-    //normal = normalize(VertexPosition - sphereCenter);
-    //lightVec = light - VertexPosition;
+    /*vec3 U = triangle[1] - triangle[0];
+	vec3 V = triangle[2] - triangle[0];
+	normal.x = (U.y*V.z) - (U.z*V.y);
+	normal.y = (U.z*V.x) - (U.x*V.z);
+	normal.z = (U.x*V.y) - (U.y*V.x);
+	normal = normalize(normal);*/
+    lightVec = light - VertexPosition;
     cameraVec = cameraPos - VertexPosition;
 }

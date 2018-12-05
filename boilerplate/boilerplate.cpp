@@ -361,10 +361,12 @@ int main(int argc, char *argv[])
 	// call function to load and compile shader programs
 	GLuint program = InitializeShaders("shaders/vertex.glsl", "shaders/fragment.glsl");
 	GLuint program3d = InitializeShaders("shaders/vertex3d.glsl", "shaders/fragment3d.glsl");
-	if (program == 0) {
+	if (program == 0 || program3d == 0) {
 		cout << "Program could not initialize shaders, TERMINATING" << endl;
 		return -1;
 	}
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
 	
 	vector<vec2> points;
 	vec3 p1_colour = vec3(1, 1, 0);
@@ -387,7 +389,9 @@ int main(int argc, char *argv[])
 	float movementSpeed = 0.01f;
 	float scrollSpeed = 0.05f;
 	scrollsens = &scrollSpeed;
+	vec3 light = vec3(0, 1, 0);
 	GLint cameraGL = glGetUniformLocation(program3d, "cameraPos");
+	GLint lightGL = glGetUniformLocation(program, "light");
 	
 	// call function to create and fill buffers with geometry data
 	Geometry geometry;
@@ -428,38 +432,36 @@ int main(int argc, char *argv[])
 			render_model = false;
 			points3.clear();
 			colours.clear();
+			vec3 model_points[points.size()/2][points2.size()];
 			for(unsigned int i = 0; i < points.size()/2; i++) {
-				/*int start = 0;
-				for(int j = 1; j < points2.size(); j++) {
-					if(points2[start] > points2[j]) {
-						start = points2[j];
-					}
-				}
-				vec2 translate = points[i] - points2[start];
-				vec2 end = points2[0];
-				for(int j = 1; j < points2.size(); j++) {
-					if(end < points2[j]) {
-						end = points2[j];
-					}
-				}
-				vec2 size = points[i]-points[points.size()-i-1];
-				vec2 size2 = start-end;
-				int scale = abs(size.x+size2.x)+abs(size.y+size2.y);
-				for(int j = 0; j < points2.size(); j++) {
-					points3.push_back(vec3());
-				}*/
 				double dist = abs(points2[0].x+points2[points2.size()/2].x)+abs(points2[0].y+points2[points2.size()/2].y);
-				for(unsigned int j = 0; j < points2.size()/2; j++) {
+				for(unsigned int j = 0; j < points2.size(); j++) {
 					double frac = abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
-					//points3.push_back(vec3(points[i].x + points2[j].x*frac, points[i].y, points2[j].y*frac));
-					points3.push_back(vec3(points[i].x, points[i].y, 0));
-					points3.push_back(vec3(points[points.size()-i-1].x, points[points.size()-i-1].y, 0));
+					vec3 point = vec3();
+					point.x = (points[i].y*frac)+(points[points.size()-i-1].y*(1-frac));
+					point.y = (points[i].y*frac)+(points[points.size()-i-1].y*(1-frac));
+					point.z = points2[j].y;
+					model_points[i][j] = point;
+				}
+			}
+			for(unsigned int i = 0; i < points.size()/2-1; i++) {
+				for(unsigned int j = 0; j < points2.size()-1; j++) {
+					points3.push_back(model_points[i][j]);
+					points3.push_back(model_points[i+1][j]);
+					points3.push_back(model_points[i][j+1]);
+					
+					points3.push_back(model_points[i+1][j]);
+					points3.push_back(model_points[i][j+1]);
+					points3.push_back(model_points[i+1][j+1]);
+					
+					colours.push_back(p3_colour);
+					colours.push_back(p3_colour);
+					colours.push_back(p3_colour);
+					colours.push_back(p3_colour);
 					colours.push_back(p3_colour);
 					colours.push_back(p3_colour);
 				}
 			}
-			glEnable(GL_DEPTH_TEST);
-			glDepthFunc(GL_LEQUAL);
 		}
 		
 		if(press == 1) {
@@ -503,6 +505,7 @@ int main(int argc, char *argv[])
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glUseProgram(program3d);
 			glUniform3fv(cameraGL, 1, &(cam.pos.x));
+			glUniform3fv(lightGL, 1, &(light.x));
 			LoadGeometry(&geometry, points3.data(), colours.data(), points3.size());
 			RenderScene(&geometry, program3d, vec3(1, 0, 0), &cam, perspectiveMatrix, GL_TRIANGLES);
 		}

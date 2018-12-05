@@ -15,7 +15,7 @@ out vec4 FragmentColour;
 in vec3 colour;
 
 //in vec3 normal;
-//in vec3 lightVec;
+in vec3 lightVec;
 in vec3 cameraVec;
 
 void main(void)
@@ -23,8 +23,8 @@ void main(void)
 	// write colour output without modification
     FragmentColour = vec4(colour, 1);
 	
-	/*vec3 normLightVec = normalize(lightVec);
-	vec3 reflection = 2*dot(normLightVec, normal) * normal - normLightVec;
+	vec3 normLightVec = normalize(lightVec);
+	/*vec3 reflection = 2*dot(normLightVec, normal) * normal - normLightVec;
 	
 	vec4 diffuse = FragmentColour*dot(normal, normLightVec);//*5.f/pow(length(lightVec), 2.f); //diffuse
 	vec4 specular = FragmentColour*pow(max(0.f, dot(reflection, normalize(cameraVec))), 100);//*5.f/pow(length(lightVec), 2.f);
