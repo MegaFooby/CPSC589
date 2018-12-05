@@ -32,11 +32,14 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include "Camera.h"
 
 using namespace std;
 using namespace glm;
 // --------------------------------------------------------------------------
 // OpenGL utility and support function prototypes
+
+#define PI_F 3.14159265359f
 
 void QueryGLVersion();
 bool CheckGLErrors();
@@ -52,11 +55,11 @@ char shape = 0;
 // Functions to set up OpenGL shader programs for rendering
 
 // load, compile, and link shaders, returning true if successful
-GLuint InitializeShaders()
+GLuint InitializeShaders(string vert, string frag)
 {
 	// load shader source from files
-	string vertexSource = LoadSource("shaders/vertex.glsl");
-	string fragmentSource = LoadSource("shaders/fragment.glsl");
+	string vertexSource = LoadSource(vert);
+	string fragmentSource = LoadSource(frag);
 	if (vertexSource.empty() || fragmentSource.empty()) return false;
 
 	// compile shader source into shader objects
@@ -156,6 +159,25 @@ bool LoadGeometry(Geometry *geometry, vec2 *vertices, vec3 *colours, int element
 	return !CheckGLErrors();
 }
 
+bool LoadGeometry(Geometry *geometry, vec3 *vertices, vec3 *colours, int elementCount)
+{
+	geometry->elementCount = elementCount;
+
+	// create an array buffer object for storing our vertices
+	glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*geometry->elementCount, vertices, GL_STATIC_DRAW);
+
+	// create another one for storing our colours
+	glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*geometry->elementCount, colours, GL_STATIC_DRAW);
+
+	//Unbind buffer to reset to default state
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	// check for OpenGL errors and return false if error occurred
+	return !CheckGLErrors();
+}
+
 // deallocate geometry-related objects
 void DestroyGeometry(Geometry *geometry)
 {
@@ -190,6 +212,38 @@ void RenderScene(Geometry *geometry, GLuint program)
 	CheckGLErrors();
 }
 
+void RenderScene(Geometry *geometry, GLuint program, vec3 color, Camera* camera, mat4 perspectiveMatrix, GLenum rendermode)
+{
+
+	// bind our shader program and the vertex array object containing our
+	// scene geometry, then tell OpenGL to draw our geometry
+	glUseProgram(program);
+
+	int vp [4];
+	glGetIntegerv(GL_VIEWPORT, vp);
+	//int width = vp[2];
+	//int height = vp[3];
+
+
+	//Bind uniforms
+	GLint uniformLocation = glGetUniformLocation(program, "Colour");
+	glUniform3f(uniformLocation, color.r, color.g, color.b); 
+
+	mat4 modelViewProjection = perspectiveMatrix*camera->viewMatrix();
+	uniformLocation = glGetUniformLocation(program, "modelViewProjection");
+	glUniformMatrix4fv(uniformLocation, 1, false, glm::value_ptr(modelViewProjection));
+
+	glBindVertexArray(geometry->vertexArray);
+	glDrawArrays(rendermode, 0, geometry->elementCount);
+
+	// reset state to default (no shader or geometry bound)
+	glBindVertexArray(0);
+	glUseProgram(0);
+
+	// check for an report any OpenGL errors
+	CheckGLErrors();
+}
+
 // --------------------------------------------------------------------------
 // GLFW callback functions
 
@@ -202,7 +256,7 @@ void ErrorCallback(int error, const char* description)
 
 // handles keyboard input events
 int press = 1;
-
+bool clear = false;
 bool render_model = false;
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -212,12 +266,13 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		}
 		if(key == GLFW_KEY_1) {
 			press = 1;
-		}
-		else if(key == GLFW_KEY_2) {
+		} else if(key == GLFW_KEY_2) {
 			press = 2;
-		}
-		else if(key == GLFW_KEY_3) {
+		} else if(key == GLFW_KEY_3) {
 			render_model = true;
+			press = 3;
+		} else if(key == GLFW_KEY_C) {
+			clear = true;
 		}
 	}
 }
@@ -254,6 +309,14 @@ void get_closed_curve(vector<vec2>* points, vector<vec3>* colours, vector<vec2>*
 	colours->push_back(inc);
 }
 
+Camera* cameraPoint;
+float* scrollsens;
+void ScrollCallback(GLFWwindow* window, double x, double y) {
+	cameraPoint->radius -= *scrollsens * y;
+	if(cameraPoint->radius < 0.f) {
+		cameraPoint->radius = 0.f;
+	}
+}
 // ==========================================================================
 // PROGRAM ENTRY POINT
 
@@ -282,6 +345,7 @@ int main(int argc, char *argv[])
 
 	// set keyboard callback function and make our context current (active)
 	glfwSetKeyCallback(window, KeyCallback);
+	glfwSetScrollCallback(window, ScrollCallback);
 	glfwMakeContextCurrent(window);
 
 	//Intialize GLAD
@@ -295,23 +359,35 @@ int main(int argc, char *argv[])
 	QueryGLVersion();
 
 	// call function to load and compile shader programs
-	GLuint program = InitializeShaders();
+	GLuint program = InitializeShaders("shaders/vertex.glsl", "shaders/fragment.glsl");
+	GLuint program3d = InitializeShaders("shaders/vertex3d.glsl", "shaders/fragment3d.glsl");
 	if (program == 0) {
 		cout << "Program could not initialize shaders, TERMINATING" << endl;
 		return -1;
 	}
 	
 	vector<vec2> points;
-	vec3 p1_colour = vec3(1, 1, 1);
+	vec3 p1_colour = vec3(1, 1, 0);
 	
 	vector<vec2> points2;
-	vec3 p2_colour = vec3(1, 1, 1);
+	vec3 p2_colour = vec3(0, 1, 0);
 	
 	vector<vec3> points3;
-	vector<vec3> colours3;
+	vec3 p3_colour = vec3(1, 0, 0);
 	
 	vector<vec2> render_line;
 	vector<vec3> colours;
+	
+	//3D shit
+	mat4 perspectiveMatrix = glm::perspective(PI_F*.4f, float(width)/float(height), .1f, 50.f);//mat4(1.f);	//Fill in with Perspective Matrix
+	Camera cam = Camera(4.f);
+	cameraPoint = &cam;
+	vec2 lastCursorPos;
+	float cursorSensitivity = PI_F/200.f;	//PI/hundred pixels
+	float movementSpeed = 0.01f;
+	float scrollSpeed = 0.05f;
+	scrollsens = &scrollSpeed;
+	GLint cameraGL = glGetUniformLocation(program3d, "cameraPos");
 	
 	// call function to create and fill buffers with geometry data
 	Geometry geometry;
@@ -323,8 +399,16 @@ int main(int argc, char *argv[])
 
 
 	// run an event-triggered main loop
-	while (!glfwWindowShouldClose(window))
-	{	
+	while (!glfwWindowShouldClose(window)) {
+		if(clear) {
+			clear = false;
+			if(press == 1) {
+				points.clear();
+			} else if(press == 2) {
+				points2.clear();
+			}
+		}
+		
 		//probably open curve
 		if(press == 1 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			double xpos, ypos;
@@ -339,12 +423,15 @@ int main(int argc, char *argv[])
 			points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
 		}
 		
-		/*if(render_model) {
+		//create the model
+		if(render_model) {
 			render_model = false;
-			for(int i = 0; i < points.size()/2; i++) {
-				vec2 start = points2[0];
+			points3.clear();
+			colours.clear();
+			for(unsigned int i = 0; i < points.size()/2; i++) {
+				/*int start = 0;
 				for(int j = 1; j < points2.size(); j++) {
-					if(start > points2[j]) {
+					if(points2[start] > points2[j]) {
 						start = points2[j];
 					}
 				}
@@ -357,21 +444,68 @@ int main(int argc, char *argv[])
 				}
 				vec2 size = points[i]-points[points.size()-i-1];
 				vec2 size2 = start-end;
-				//int scale = 
-				//cout << start << " " << end << endl;
+				int scale = abs(size.x+size2.x)+abs(size.y+size2.y);
+				for(int j = 0; j < points2.size(); j++) {
+					points3.push_back(vec3());
+				}*/
+				double dist = abs(points2[0].x+points2[points2.size()/2].x)+abs(points2[0].y+points2[points2.size()/2].y);
+				for(unsigned int j = 0; j < points2.size()/2; j++) {
+					double frac = abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
+					//points3.push_back(vec3(points[i].x + points2[j].x*frac, points[i].y, points2[j].y*frac));
+					points3.push_back(vec3(points[i].x, points[i].y, 0));
+					points3.push_back(vec3(points[points.size()-i-1].x, points[points.size()-i-1].y, 0));
+					colours.push_back(p3_colour);
+					colours.push_back(p3_colour);
+				}
 			}
-		}*/
+			glEnable(GL_DEPTH_TEST);
+			glDepthFunc(GL_LEQUAL);
+		}
 		
 		if(press == 1) {
 			get_open_curve(&render_line, &colours, &points, p1_colour);
 			LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size());
+			// call function to draw our scene
+			RenderScene(&geometry, program);
 		} else if(press == 2) {
 			get_closed_curve(&render_line, &colours, &points2, p2_colour);
 			LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size());
+			// call function to draw our scene
+			RenderScene(&geometry, program);
+		} else if(press == 3) {
+			////////////////////////
+			//Camera interaction
+			////////////////////////
+			//Translation
+			vec3 movement(0.f);
+			
+			if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+				movement.z += 1.f;
+			if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+				movement.z -= 1.f;
+			if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+				movement.x += 1.f;
+			if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+				movement.x -= 1.f;
+			cam.move(movement*movementSpeed);
+			
+			//Rotation
+			double xpos, ypos;
+			glfwGetCursorPos(window, &xpos, &ypos);
+			vec2 cursorPos(xpos, ypos);
+			vec2 cursorChange = cursorPos - lastCursorPos;
+			lastCursorPos = cursorPos;
+			
+			if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+				cam.rotateHorizontal(-cursorChange.x*cursorSensitivity);
+				cam.rotateVertical(-cursorChange.y*cursorSensitivity);
+			}
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glUseProgram(program3d);
+			glUniform3fv(cameraGL, 1, &(cam.pos.x));
+			LoadGeometry(&geometry, points3.data(), colours.data(), points3.size());
+			RenderScene(&geometry, program3d, vec3(1, 0, 0), &cam, perspectiveMatrix, GL_TRIANGLES);
 		}
-		
-		// call function to draw our scene
-		RenderScene(&geometry, program);
 
 		glfwSwapBuffers(window);
 
