@@ -114,10 +114,10 @@ bool InitializeVAO(Geometry *geometry){
 	glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
 	glVertexAttribPointer(
 		VERTEX_INDEX,		//Attribute index 
-		2, 					//# of components
+		3, 					//# of components
 		GL_FLOAT, 			//Type of component
 		GL_FALSE, 			//Should be normalized?
-		sizeof(vec2),		//Stride - can use 0 if tightly packed
+		sizeof(vec3),		//Stride - can use 0 if tightly packed
 		0);					//Offset to first element
 	glEnableVertexAttribArray(VERTEX_INDEX);
 
@@ -140,25 +140,6 @@ bool InitializeVAO(Geometry *geometry){
 }
 
 // create buffers and fill with geometry data, returning true if successful
-bool LoadGeometry(Geometry *geometry, vec2 *vertices, vec3 *colours, int elementCount)
-{
-	geometry->elementCount = elementCount;
-
-	// create an array buffer object for storing our vertices
-	glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec2)*geometry->elementCount, vertices, GL_STATIC_DRAW);
-
-	// create another one for storing our colours
-	glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3)*geometry->elementCount, colours, GL_STATIC_DRAW);
-
-	//Unbind buffer to reset to default state
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	// check for OpenGL errors and return false if error occurred
-	return !CheckGLErrors();
-}
-
 bool LoadGeometry(Geometry *geometry, vec3 *vertices, vec3 *colours, int elementCount)
 {
 	geometry->elementCount = elementCount;
@@ -277,15 +258,15 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	}
 }
 
-void get_open_curve(vector<vec2>* points, vector<vec3>* colours, vector<vec2>* inp, vec3 inc) {
+void get_open_curve(vector<vec3>* points, vector<vec3>* colours, vector<vec2>* inp, vec3 inc) {
 	points->clear();
 	colours->clear();
 	if(inp->size() == 0) return;
-	points->push_back(inp->at(0));
+	points->push_back(vec3(inp->at(0).x, inp->at(0).y, 0));
 	colours->push_back(inc);
 	for(unsigned int i = 1; i < inp->size(); i++) {
-		points->push_back(inp->at(i));
-		points->push_back(inp->at(i));
+		points->push_back(vec3(inp->at(i).x, inp->at(i).y, 0));
+		points->push_back(vec3(inp->at(i).x, inp->at(i).y, 0));
 		colours->push_back(inc);
 		colours->push_back(inc);
 	}
@@ -293,19 +274,19 @@ void get_open_curve(vector<vec2>* points, vector<vec3>* colours, vector<vec2>* i
 	colours->pop_back();
 }
 
-void get_closed_curve(vector<vec2>* points, vector<vec3>* colours, vector<vec2>* inp, vec3 inc) {
+void get_closed_curve(vector<vec3>* points, vector<vec3>* colours, vector<vec2>* inp, vec3 inc) {
 	points->clear();
 	colours->clear();
 	if(inp->size() == 0) return;
-	points->push_back(inp->at(0));
+	points->push_back(vec3(inp->at(0).x, inp->at(0).y, 0));
 	colours->push_back(inc);
 	for(unsigned int i = 1; i < inp->size(); i++) {
-		points->push_back(inp->at(i));
-		points->push_back(inp->at(i));
+		points->push_back(vec3(inp->at(i).x, inp->at(i).y, 0));
+		points->push_back(vec3(inp->at(i).x, inp->at(i).y, 0));
 		colours->push_back(inc);
 		colours->push_back(inc);
 	}
-	points->push_back(inp->at(0));
+	points->push_back(vec3(inp->at(0).x, inp->at(0).y, 0));
 	colours->push_back(inc);
 }
 
@@ -377,7 +358,7 @@ int main(int argc, char *argv[])
 	vector<vec3> points3;
 	vec3 p3_colour = vec3(1, 0, 0);
 	
-	vector<vec2> render_line;
+	vector<vec3> render_line;
 	vector<vec3> colours;
 	
 	//3D shit
@@ -398,7 +379,7 @@ int main(int argc, char *argv[])
 	if (!InitializeVAO(&geometry))
 		cout << "Program failed to intialize geometry!" << endl;
 
-	if(!LoadGeometry(&geometry, points.data(), colours.data(), points.size()))
+	if(!LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size()))
 		cout << "Failed to load geometry" << endl;
 
 
@@ -438,6 +419,7 @@ int main(int argc, char *argv[])
 				for(unsigned int j = 0; j < points2.size(); j++) {
 					double frac = abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
 					vec3 point = vec3();
+					//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
 					point.x = (points[i].y*frac)+(points[points.size()-i-1].y*(1-frac));
 					point.y = (points[i].y*frac)+(points[points.size()-i-1].y*(1-frac));
 					point.z = points2[j].y;
