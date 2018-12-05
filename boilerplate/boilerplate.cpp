@@ -203,7 +203,7 @@ void ErrorCallback(int error, const char* description)
 // handles keyboard input events
 int press = 1;
 
-	bool render_model = false;
+bool render_model = false;
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS) {
@@ -220,6 +220,38 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			render_model = true;
 		}
 	}
+}
+
+void get_open_curve(vector<vec2>* points, vector<vec3>* colours, vector<vec2>* inp, vec3 inc) {
+	points->clear();
+	colours->clear();
+	if(inp->size() == 0) return;
+	points->push_back(inp->at(0));
+	colours->push_back(inc);
+	for(unsigned int i = 1; i < inp->size(); i++) {
+		points->push_back(inp->at(i));
+		points->push_back(inp->at(i));
+		colours->push_back(inc);
+		colours->push_back(inc);
+	}
+	points->pop_back();
+	colours->pop_back();
+}
+
+void get_closed_curve(vector<vec2>* points, vector<vec3>* colours, vector<vec2>* inp, vec3 inc) {
+	points->clear();
+	colours->clear();
+	if(inp->size() == 0) return;
+	points->push_back(inp->at(0));
+	colours->push_back(inc);
+	for(unsigned int i = 1; i < inp->size(); i++) {
+		points->push_back(inp->at(i));
+		points->push_back(inp->at(i));
+		colours->push_back(inc);
+		colours->push_back(inc);
+	}
+	points->push_back(inp->at(0));
+	colours->push_back(inc);
 }
 
 // ==========================================================================
@@ -270,13 +302,16 @@ int main(int argc, char *argv[])
 	}
 	
 	vector<vec2> points;
-	vector<vec3> colours;
+	vec3 p1_colour = vec3(1, 1, 1);
 	
 	vector<vec2> points2;
-	vector<vec3> colours2;
+	vec3 p2_colour = vec3(1, 1, 1);
 	
 	vector<vec3> points3;
 	vector<vec3> colours3;
+	
+	vector<vec2> render_line;
+	vector<vec3> colours;
 	
 	// call function to create and fill buffers with geometry data
 	Geometry geometry;
@@ -295,55 +330,44 @@ int main(int argc, char *argv[])
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
 			points.push_back(vec2(xpos/256-1, -(ypos/256-1)));
-			points.push_back(vec2(xpos/256-1, -(ypos/256-1)));
-			colours.push_back(vec3(1, 1, 1));
-			colours.push_back(vec3(1, 1, 1));
-			if(points.size() == 2) {
-				points.pop_back();
-			}
 		}
 		
 		//always closed curve
 		if(press == 2 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
-			if(points2.size() == 0) {
-				points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
-				points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
-			} else {
-				points2.pop_back();
-				points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
-				points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
-				points2.push_back(points2[0]);
-			}
-			colours2.push_back(vec3(1, 1, 1));
-			colours2.push_back(vec3(1, 1, 1));
+			points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
 		}
 		
-		if(render_model) {
-			for(int i = 0; i < points.size(); i++) {
-				int start = points2[0].x;
+		/*if(render_model) {
+			render_model = false;
+			for(int i = 0; i < points.size()/2; i++) {
+				vec2 start = points2[0];
 				for(int j = 1; j < points2.size(); j++) {
-					if(start > points2[j].x) {
-						start = j;
+					if(start > points2[j]) {
+						start = points2[j];
 					}
 				}
 				vec2 translate = points[i] - points2[start];
-				int end = points2[0].x;
+				vec2 end = points2[0];
 				for(int j = 1; j < points2.size(); j++) {
-					if(end < points2[j].x) {
-						end = j;
+					if(end < points2[j]) {
+						end = points2[j];
 					}
 				}
-				cout << start << " " << end << endl;
-				
+				vec2 size = points[i]-points[points.size()-i-1];
+				vec2 size2 = start-end;
+				//int scale = 
+				//cout << start << " " << end << endl;
 			}
-		}
+		}*/
 		
 		if(press == 1) {
-			LoadGeometry(&geometry, points.data(), colours.data(), points.size());
+			get_open_curve(&render_line, &colours, &points, p1_colour);
+			LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size());
 		} else if(press == 2) {
-			LoadGeometry(&geometry, points2.data(), colours2.data(), points2.size());
+			get_closed_curve(&render_line, &colours, &points2, p2_colour);
+			LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size());
 		}
 		
 		// call function to draw our scene
