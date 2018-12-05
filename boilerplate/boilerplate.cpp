@@ -180,14 +180,7 @@ void RenderScene(Geometry *geometry, GLuint program)
 	glUseProgram(program);
 	glBindVertexArray(geometry->vertexArray);
 	//rendering lines or triangles based on the shape
-	if(shape == 2) {
-		glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
-	}
-	else if(shape == 4) {
-		glDrawArrays(GL_POINTS, 0, geometry->elementCount);
-	} else{
-		glDrawArrays(GL_LINES, 0, geometry->elementCount);
-	}
+	glDrawArrays(GL_LINES, 0, geometry->elementCount);
 
 	// reset state to default (no shader or geometry bound)
 	glBindVertexArray(0);
@@ -207,83 +200,8 @@ void ErrorCallback(int error, const char* description)
 	cout << description << endl;
 }
 
-//Draws the parametric spiral
-#define PI 3.14159265358979323846
-void drawSpiral(float x, float y, int iterate, vector<vec2>* points, vector<vec3>* colours) {
-	points->clear();
-	colours->clear();
-	if(iterate > 50) {iterate = 50;iterations = 50;}
-	iterate++;
-	float colour = 0.f;
-	float colourScale = 0.001/(iterate*2*PI);
-	float oldx = x;
-	float oldy = y;
-	for(float u = 0; u < iterate*2*PI; u+=0.001) {
-		float newx = (u*cos(u))/((iterate*3.5)*PI);
-		float newy = -(u*sin(u))/((iterate*3.5)*PI);
-		points->push_back(vec2(oldx, oldy));
-		points->push_back(vec2(newx, newy));
-		oldx = newx;
-		oldy = newy;
-		for(int j = 0; j < 2; j++) {
-			colours->push_back(vec3(0, 0, colour));
-		}
-		colour += colourScale;
-	}
-}
-
-void transform(float x, float y, float& writex, float& writey, int num) {
-	if(num%100 == 0) {
-		writex = 0.f;
-		writey = 0.16f*y;
-		return;
-	}
-	else if(num%100 <= 85) {
-		writex = 0.85f*x + 0.04f*y;
-		writey = -0.04f*x + 0.85f*y + 1.6f;
-		return;
-	}
-	else if(num%100 <= 92) {
-		writex = 0.2f*x - 0.26f*y;
-		writey = 0.23f*x + 0.22f*y + 1.6f;
-		return;
-	}
-	else {
-		writex = -0.15f*x + 0.28f*y;
-		writey = 0.26f*x + 0.24f*y + 0.44f;
-		return;
-	}
-}
-
-void drawFern(float x, float y, vector<vec2>* points, vector<vec3>* colours) {
-	points->clear();
-	colours->clear();
-	float scale = 0.15f;
-	int iterate = 1000000;
-	vector<vec2> point = {vec2(0.f, 0.f)};
-	for(int i = 0; i < iterate; i++) {
-		float newx = 0.f;
-		float newy = 0.f;
-		int ran = rand()%point.size();
-		float oldx = point[ran].x;
-		float oldy = point[ran].y;
-		transform(oldx, oldy, newx, newy, rand()%100);
-		points->push_back(vec2((newx*scale)+x, (newy*scale)+y));
-		point.push_back(vec2(newx, newy));
-		colours->push_back(vec3(0, 1, 0));
-		colours->push_back(vec3(0, 1, 0));
-	}
-}
-
-//Calls one of the 5 functions above based on the shape variable
-void generateShape(int iterate, vector<vec2>* points, vector<vec3>* colours) {
-	if(shape == 1)
-		drawSpiral(0.f, 0.f, iterate, points, colours);
-	else if(shape == 4)
-		drawFern(0.f, -0.7f, points, colours);
-}
-
 // handles keyboard input events
+int press = 1;
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS) {
@@ -291,33 +209,10 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
 		if(key == GLFW_KEY_1) {
-			shape = 0;
-			iterations = 0;
+			press = 1;
 		}
-		if(key == GLFW_KEY_2) {
-			shape = 1;
-			iterations = 0;
-		}
-		if(key == GLFW_KEY_3) {
-			shape = 2;
-			iterations = 0;
-		}
-		if(key == GLFW_KEY_4) {
-			shape = 3;
-			iterations = 0;
-		}
-		if(key == GLFW_KEY_5) {
-			shape = 4;
-			iterations = 0;
-		}
-		//limits between 0 and 10 iterations
-		if(key == GLFW_KEY_W) {
-			iterations++;
-		}
-		else if(key == GLFW_KEY_S) {
-			if(--iterations < 0) {
-				iterations++;
-			}
+		else if(key == GLFW_KEY_2) {
+			press = 2;
 		}
 	}
 }
@@ -372,10 +267,11 @@ int main(int argc, char *argv[])
 	vector<vec2> points;
 	vector<vec3> colours;
 	
-	generateShape(4, &points, &colours);
+	vector<vec2> points2;
+	vector<vec3> colours2;
 	
-	int lastIterationNum = 0;
-	char lastShape = 0;
+	vector<vec3> points3;
+	vector<vec3> colours3;
 	
 	// call function to create and fill buffers with geometry data
 	Geometry geometry;
@@ -385,14 +281,64 @@ int main(int argc, char *argv[])
 	if(!LoadGeometry(&geometry, points.data(), colours.data(), points.size()))
 		cout << "Failed to load geometry" << endl;
 
+	bool render_model = false;
+
 	// run an event-triggered main loop
 	while (!glfwWindowShouldClose(window))
-	{
-		if(iterations != lastIterationNum || shape != lastShape){
-			generateShape(iterations, &points, &colours);
+	{	
+		//probably open curve
+		if(press == 1 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+			double xpos, ypos;
+			glfwGetCursorPos(window, &xpos, &ypos);
+			points.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+			points.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+			colours.push_back(vec3(1, 1, 1));
+			colours.push_back(vec3(1, 1, 1));
+			if(points.size() == 2) {
+				points.pop_back();
+			}
+		}
+		
+		//always closed curve
+		if(press == 2 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+			double xpos, ypos;
+			glfwGetCursorPos(window, &xpos, &ypos);
+			if(points2.size() == 0) {
+				points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+				points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+			} else {
+				points2.pop_back();
+				points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+				points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+				points2.push_back(points2[0]);
+			}
+			colours2.push_back(vec3(1, 1, 1));
+			colours2.push_back(vec3(1, 1, 1));
+		}
+		
+		if(render_model) {
+			for(int i = 0; i < points.size(); i++) {
+				int start = points2[0].x;
+				for(int j = 1; j < points2.size(); i++) {
+					if(start > points2[j].x) {
+						start = j;
+					}
+				}
+				vec2 translate = points[i] - points2[start];
+				int end = points2[0].x;
+				for(int j = 1; j < points2.size(); i++) {
+					if(end < points2[j].x) {
+						end = j;
+					}
+				}
+				
+			}
+		}
+		
+		if(press == 1) {
 			LoadGeometry(&geometry, points.data(), colours.data(), points.size());
-			lastIterationNum = iterations;
-			lastShape = shape;
+		} else if(press == 2) {
+			LoadGeometry(&geometry, points2.data(), colours2.data(), points2.size());
 		}
 		
 		// call function to draw our scene
