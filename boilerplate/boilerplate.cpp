@@ -445,49 +445,8 @@ int main(int argc, char *argv[])
 			render_model = false;
 			points3.clear();
 			colours.clear();
-			float foo = abs(points2[0].x - points2[points2.size()-1].x);
-			float bar = abs(points2[0].y - points2[points2.size()-1].y);
-			float baz = atan(bar/foo);
-			mat2 rotate = mat2(vec2(cos(baz), -sin(baz)), vec2(sin(baz), cos(baz)));
-			vector<vector<vec3>> model_points;//[points.size()][points2.size()*2];
-			for(unsigned int i = 0; i < points.size(); i++) {
-				double dist = abs(points[0].x+points[points.size()/2].x)+abs(points[0].y+points[points.size()/2].y);
-				vector<vec3> tmp;
-				model_points.push_back(tmp);
-				for(unsigned int j = 0; j < points2.size()/2; j++) {
-					double frac = (double)j/(double)points2.size();//abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
-					vec3 point = vec3();
-					point.x = (points[i].x*(1-frac))-(points[i].x*(frac));
-					point.y = (points[i].y);//*(1-frac))+(points[points.size()-i-1].y*(frac));
-					point.z = ((rotate*points2[j]).y - (rotate*points2[0]).y)*dist;
-					model_points[i].push_back(point);
-				}
-				vec3 point = vec3();
-				point.x = points[0].x;
-				point.y = points[0].y;//*(1-frac))+(points[points.size()-i-1].y*(frac));
-				point.z = 0;
-				model_points[i].push_back(point);
-				
-			}
-			for(unsigned int i = 0; i < points.size(); i++) {
-				double dist = abs(points[0].x+points[points.size()/2].x)+abs(points[0].y+points[points.size()/2].y);
-				vector<vec3> tmp;
-				model_points.push_back(tmp);
-				for(unsigned int j = 0; j < points2.size()/2; j++) {
-					double frac = (double)j/(double)points2.size();//abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
-					vec3 point = vec3();
-					//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
-					point.x = (points[i].x*(1-frac))-(points[i].x*(frac));
-					point.y = (points[i].y);//*(1-frac))+(points[points.size()-i-1].y*(frac));
-					point.z = -((rotate*points2[j]).y - (rotate*points2[0]).y)*dist;
-					model_points[i+points.size()].push_back(point);
-				}
-				vec3 point = vec3();
-				point.x = points[0].x;
-				point.y = points[0].y;//*(1-frac))+(points[points.size()-i-1].y*(frac));
-				point.z = 0;
-				model_points[i+points.size()].push_back(point);
-			}
+			vector<vector<vec3>> model_points;
+			
 			
 			//make points into triangles
 			for(unsigned int i = 0; i < model_points.size()-1; i++) {
