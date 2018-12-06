@@ -199,10 +199,6 @@ void DestroyGeometry(Geometry *geometry)
 
 void RenderScene(Geometry *geometry, GLuint program)
 {
-	// clear screen to a dark grey colour
-	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	// bind our shader program and the vertex array object containing our
 	// scene geometry, then tell OpenGL to draw our geometry
 	glUseProgram(program);
@@ -275,8 +271,10 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		} else if(key == GLFW_KEY_2) {
 			press = 2;
 		} else if(key == GLFW_KEY_3) {
-			render_model = true;
 			press = 3;
+		} else if(key == GLFW_KEY_4) {
+			render_model = true;
+			press = 4;
 		} else if(key == GLFW_KEY_C) {
 			clear = true;
 		}
@@ -380,10 +378,12 @@ int main(int argc, char *argv[])
 	vector<vec2> points2;
 	vec3 p2_colour = vec3(0, 1, 0);
 	
-	vector<vec3> points3;
-	vec3 p3_colour = vec3(1, 1, 1);
+	vector<vec2> points3;
+	vec3 p3_colour = vec3(0, 1, 1);
 	
-	vector<vec3> render_line;
+	vector<vec3> pointsm;
+	vec3 pm_colour = vec3(1, 1, 1);
+	
 	vector<vec3> colours;
 	
 	//3D shit
@@ -404,121 +404,128 @@ int main(int argc, char *argv[])
 	if (!InitializeVAO(&geometry))
 		cout << "Program failed to intialize geometry!" << endl;
 
-	if(!LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size()))
+	if(!LoadGeometry(&geometry, pointsm.data(), colours.data(), pointsm.size()))
 		cout << "Failed to load geometry" << endl;
 
 
 	// run an event-triggered main loop
 	while (!glfwWindowShouldClose(window)) {
+		// clear screen to a dark grey colour
+		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 		if(clear) {
 			clear = false;
 			if(press == 1) {
 				points.clear();
 			} else if(press == 2) {
 				points2.clear();
+			} else if(press == 3) {
+				points3.clear();
 			}
 		}
 		
-		//probably open curve
 		if(press == 1 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
 			points.push_back(vec2(xpos/256-1, -(ypos/256-1)));
 		}
-		
-		//always closed curve
 		if(press == 2 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
 			points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
 		}
-		
+		if(press == 3 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+			double xpos, ypos;
+			glfwGetCursorPos(window, &xpos, &ypos);
+			points3.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+		}
 		
 		//create the model
 		if(render_model) {
 			render_model = false;
-			/*points2.clear();
-			points2.push_back(vec2(-1,.1));
-			points2.push_back(vec2(1,.1));*/
 			points3.clear();
 			colours.clear();
+			float foo = abs(points2[0].x - points2[points2.size()-1].x);
+			float bar = abs(points2[0].y - points2[points2.size()-1].y);
+			float baz = atan(bar/foo);
+			mat2 rotate = mat2(vec2(cos(baz), -sin(baz)), vec2(sin(baz), cos(baz)));
 			vector<vector<vec3>> model_points;//[points.size()][points2.size()*2];
 			for(unsigned int i = 0; i < points.size(); i++) {
-				double dist = abs(points2[0].x+points2[points2.size()/2].x)+abs(points2[0].y+points2[points2.size()/2].y);
+				double dist = abs(points[0].x+points[points.size()/2].x)+abs(points[0].y+points[points.size()/2].y);
 				vector<vec3> tmp;
 				model_points.push_back(tmp);
-				for(unsigned int j = 0; j < points2.size(); j++) {
+				for(unsigned int j = 0; j < points2.size()/2; j++) {
 					double frac = (double)j/(double)points2.size();//abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
 					vec3 point = vec3();
-					//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
 					point.x = (points[i].x*(1-frac))-(points[i].x*(frac));
 					point.y = (points[i].y);//*(1-frac))+(points[points.size()-i-1].y*(frac));
-					point.z = points2[j].y;
+					point.z = ((rotate*points2[j]).y - (rotate*points2[0]).y)*dist;
 					model_points[i].push_back(point);
-				
 				}
-				/*vec3 point = vec3();
-				point.x = -(points[i].x);
-				point.y = (points[i].y);//*(1-frac))+(points[points.size()-i-1].y*(frac));
-				point.z = points2[0].y;
-				model_points[i].push_back(point);*/
+				vec3 point = vec3();
+				point.x = points[0].x;
+				point.y = points[0].y;//*(1-frac))+(points[points.size()-i-1].y*(frac));
+				point.z = 0;
+				model_points[i].push_back(point);
+				
 			}
 			for(unsigned int i = 0; i < points.size(); i++) {
-				double dist = abs(points2[0].x+points2[points2.size()/2].x)+abs(points2[0].y+points2[points2.size()/2].y);
+				double dist = abs(points[0].x+points[points.size()/2].x)+abs(points[0].y+points[points.size()/2].y);
 				vector<vec3> tmp;
 				model_points.push_back(tmp);
-				for(unsigned int j = 0; j < points2.size(); j++) {
+				for(unsigned int j = 0; j < points2.size()/2; j++) {
 					double frac = (double)j/(double)points2.size();//abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
 					vec3 point = vec3();
 					//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
 					point.x = (points[i].x*(1-frac))-(points[i].x*(frac));
 					point.y = (points[i].y);//*(1-frac))+(points[points.size()-i-1].y*(frac));
-					point.z = -points2[j].y;
+					point.z = -((rotate*points2[j]).y - (rotate*points2[0]).y)*dist;
 					model_points[i+points.size()].push_back(point);
 				}
-				/*vec3 point = vec3();
-				point.x = -(points[i].x);
-				point.y = (points[i].y);//*(1-frac))+(points[points.size()-i-1].y*(frac));
-				point.z = -points2[0].y;
-				model_points[i+points.size()].push_back(point);*/
+				vec3 point = vec3();
+				point.x = points[0].x;
+				point.y = points[0].y;//*(1-frac))+(points[points.size()-i-1].y*(frac));
+				point.z = 0;
+				model_points[i+points.size()].push_back(point);
 			}
 			
 			//make points into triangles
 			for(unsigned int i = 0; i < model_points.size()-1; i++) {
 				for(unsigned int j = 0; j < model_points[i].size()-1; j++) {//cout << model_points.size() << " " << model_points[i].size() << " " << i << " " << j << endl;
-					points3.push_back(model_points[i][j]);
-					points3.push_back(model_points[i][j+1]);
-					points3.push_back(model_points[i+1][j]);
+					pointsm.push_back(model_points[i][j]);
+					pointsm.push_back(model_points[i][j+1]);
+					pointsm.push_back(model_points[i+1][j]);
 					
-					points3.push_back(model_points[i+1][j]);
-					points3.push_back(model_points[i][j+1]);
-					points3.push_back(model_points[i+1][j+1]);
+					pointsm.push_back(model_points[i+1][j]);
+					pointsm.push_back(model_points[i][j+1]);
+					pointsm.push_back(model_points[i+1][j+1]);
 					
-					colours.push_back(p3_colour);
-					colours.push_back(p3_colour);
-					colours.push_back(p3_colour);
-					colours.push_back(p3_colour);
-					colours.push_back(p3_colour);
-					colours.push_back(p3_colour);
+					colours.push_back(pm_colour);
+					colours.push_back(pm_colour);
+					colours.push_back(pm_colour);
+					colours.push_back(pm_colour);
+					colours.push_back(pm_colour);
+					colours.push_back(pm_colour);
 				}
 			}
-			
-			//if(points.size() % 2 == 1) {
-				
-			//}
 		}
 		
-		if(press == 1) {
-			get_open_curve(&render_line, &colours, &points, p1_colour);
-			LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size());
-			// call function to draw our scene
+		if(press == 1 || press == 2) {
+			vector<vec3> rline1, rline2;
+			get_open_curve(&rline1, &colours, &points, p1_colour);
+			LoadGeometry(&geometry, rline1.data(), colours.data(), rline1.size());
 			RenderScene(&geometry, program);
-		} else if(press == 2) {
-			get_open_curve(&render_line, &colours, &points2, p2_colour);
-			LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size());
+			get_open_curve(&rline2, &colours, &points2, p2_colour);
+			LoadGeometry(&geometry, rline2.data(), colours.data(), rline2.size());
 			// call function to draw our scene
 			RenderScene(&geometry, program);
 		} else if(press == 3) {
+			vector<vec3> render_line;
+			get_open_curve(&render_line, &colours, &points3, p3_colour);
+			LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size());
+			// call function to draw our scene
+			RenderScene(&geometry, program);
+		} else if(press == 4) {
 			////////////////////////
 			//Camera interaction
 			////////////////////////
@@ -534,6 +541,7 @@ int main(int argc, char *argv[])
 			if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 				movement.x -= 1.f;
 			cam.move(movement*movementSpeed);
+			light = cam.pos;
 			
 			//Rotation
 			double xpos, ypos;
@@ -550,7 +558,7 @@ int main(int argc, char *argv[])
 			glUseProgram(program3d);
 			glUniform3fv(cameraGL, 1, &(cam.pos.x));
 			glUniform3fv(lightGL, 1, &(light.x));
-			LoadGeometry(&geometry, points3.data(), colours.data(), points3.size());
+			LoadGeometry(&geometry, pointsm.data(), colours.data(), pointsm.size());
 			RenderScene(&geometry, program3d, vec3(1, 0, 0), &cam, perspectiveMatrix, GL_TRIANGLES);
 		}
 
