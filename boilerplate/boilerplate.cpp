@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
 	float movementSpeed = 0.01f;
 	float scrollSpeed = 0.05f;
 	scrollsens = &scrollSpeed;
-	vec3 light = vec3(0, 1, 0);
+	vec3 light = vec3(-1, 1, 0);
 	GLint cameraGL = glGetUniformLocation(program3d, "cameraPos");
 	GLint lightGL = glGetUniformLocation(program, "light");
 	
@@ -433,36 +433,49 @@ int main(int argc, char *argv[])
 			points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
 		}
 		
+		
 		//create the model
 		if(render_model) {
 			render_model = false;
+			points2.clear();
+			points2.push_back(vec2(-1,.1));
+			points2.push_back(vec2(1,.1));
 			points3.clear();
 			colours.clear();
-			vec3 model_points[points.size()/2][points2.size()*2];
-			for(unsigned int i = 0; i < points.size()/2; i++) {
+			vector<vector<vec3>> model_points;//[points.size()][points2.size()*2];
+			for(unsigned int i = 0; i < points.size(); i++) {
 				double dist = abs(points2[0].x+points2[points2.size()/2].x)+abs(points2[0].y+points2[points2.size()/2].y);
+				vector<vec3> tmp;
+				model_points.push_back(tmp);
 				for(unsigned int j = 0; j < points2.size(); j++) {
-					double frac = abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
+					double frac = (double)j/(double)points2.size();//abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
 					vec3 point = vec3();
 					//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
-					point.x = (points[i].x*(1-frac))+(points[points.size()-i-1].x*(frac));
-					point.y = (points[i].y*(1-frac))+(points[points.size()-i-1].y*(frac));
+					point.x = (points[i].x*(1-frac))-(points[i].x*(frac));
+					point.y = (points[i].y);//*(1-frac))+(points[points.size()-i-1].y*(frac));
 					point.z = points2[j].y;
-					model_points[i][j] = point;
-				}
-				for(unsigned int j = points2.size(); j < points2.size()*2; j++) {
-					double frac = abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
-					vec3 point = vec3();
-					//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
-					point.x = (points[i].x*(frac))+(points[points.size()-i-1].x*(1-frac));
-					point.y = (points[i].y*(frac))+(points[points.size()-i-1].y*(1-frac));
-					point.z = -points2[j].y;
-					model_points[i][j] = point;
+					model_points[i].push_back(point);
+				
 				}
 			}
+			// for(unsigned int i = points.size(); i < points.size()*2; i++) {
+			// 	double dist = abs(points2[0].x+points2[points2.size()/2].x)+abs(points2[0].y+points2[points2.size()/2].y);
+			// 	vector<vec3> tmp;
+			// 	model_points.push_back(tmp);
+			// 	for(unsigned int j = 0; j < points2.size(); j++) {
+			// 		double frac = (double)j/(double)points2.size();//abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
+			// 		vec3 point = vec3();
+			// 		//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
+			// 		point.x = (points[i].x*(1-frac))-(points[i].x*(frac));
+			// 		point.y = (points[i].y);//*(1-frac))+(points[points.size()-i-1].y*(frac));
+			// 		point.z = -points2[j].y;
+			// 		model_points[i].push_back(point);
+				
+			// 	}
+			// }
 			//make points into triangles
-			for(unsigned int i = 0; i < points.size()/2-1; i++) {
-				for(unsigned int j = 0; j < points2.size()*2-1; j++) {
+			for(unsigned int i = 0; i < model_points.size()-1; i++) {
+				for(unsigned int j = 0; j < model_points[i].size()-1; j++) {
 					points3.push_back(model_points[i][j]);
 					points3.push_back(model_points[i][j+1]);
 					points3.push_back(model_points[i+1][j]);
