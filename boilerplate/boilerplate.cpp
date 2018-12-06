@@ -321,6 +321,10 @@ void ScrollCallback(GLFWwindow* window, double x, double y) {
 		cameraPoint->radius = 0.f;
 	}
 }
+
+vec2 spline(vector<vec2>* points, float i) {
+	return vec2(0, 0);
+}
 // ==========================================================================
 // PROGRAM ENTRY POINT
 
@@ -447,6 +451,21 @@ int main(int argc, char *argv[])
 			colours.clear();
 			vector<vector<vec3>> model_points;
 			
+			vector<vec2> curve1, curve2;//, curve3;
+			for(float i = 0; i <= 1; i += 0.01) {
+				curve1.push_back(spline(&points, i));
+				curve2.push_back(spline(&points2, i));
+				//curve3.push_back(spline(&points3, i));
+			}
+			for(unsigned int i = 0; i < curve1.size(); i++) {
+				vector<vec3> tmp;
+				model_points.push_back(tmp);
+				float scale = abs(curve1[i].x - curve2[i].x) + abs(curve1[i].y - curve2[i].y);
+				for(float j = 0; j <= 1; j += 0.01) {
+					vec2 point1 = (1-j)*curve1[i] + (j)*curve2[i];
+					model_points[i].push_back(vec3(point1, spline(&points3, j).y*scale));
+				}
+			}
 			
 			//make points into triangles
 			for(unsigned int i = 0; i < model_points.size()-1; i++) {
