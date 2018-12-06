@@ -47,6 +47,7 @@ bool CheckGLErrors();
 string LoadSource(const string &filename);
 GLuint CompileShader(GLenum shaderType, const string &source);
 GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
+GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint geoShader);
 
 int iterations = 0;
 char shape = 0;
@@ -71,6 +72,30 @@ GLuint InitializeShaders(string vert, string frag)
 
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
+
+	// check for OpenGL errors and return false if error occurred
+	return program;
+}
+
+GLuint InitializeShaders(string vert, string frag, string geo)
+{
+	// load shader source from files
+	string vertexSource = LoadSource(vert);
+	string fragmentSource = LoadSource(frag);
+	string geoSource = LoadSource(geo);
+	if (vertexSource.empty() || fragmentSource.empty() || geoSource.empty()) return false;
+
+	// compile shader source into shader objects
+	GLuint vertex = CompileShader(GL_VERTEX_SHADER, vertexSource);
+	GLuint fragment = CompileShader(GL_FRAGMENT_SHADER, fragmentSource);
+	GLuint geometry = CompileShader(GL_GEOMETRY_SHADER, geoSource);
+
+	// link shader program
+	GLuint program = LinkProgram(vertex, fragment, geometry);
+
+	glDeleteShader(vertex);
+	glDeleteShader(fragment);
+	glDeleteShader(geometry);
 
 	// check for OpenGL errors and return false if error occurred
 	return program;
@@ -341,7 +366,7 @@ int main(int argc, char *argv[])
 
 	// call function to load and compile shader programs
 	GLuint program = InitializeShaders("shaders/vertex.glsl", "shaders/fragment.glsl");
-	GLuint program3d = InitializeShaders("shaders/vertex3d.glsl", "shaders/fragment3d.glsl");
+	GLuint program3d = InitializeShaders("shaders/vertex3d.glsl", "shaders/fragment3d.glsl", "shaders/geometry3d.glsl");
 	if (program == 0 || program3d == 0) {
 		cout << "Program could not initialize shaders, TERMINATING" << endl;
 		return -1;
@@ -420,8 +445,8 @@ int main(int argc, char *argv[])
 					double frac = abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
 					vec3 point = vec3();
 					//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
-					point.x = (points[i].y*frac)+(points[points.size()-i-1].y*(1-frac));
-					point.y = (points[i].y*frac)+(points[points.size()-i-1].y*(1-frac));
+					point.x = (points[i].x*(1-frac))+(points[points.size()-i-1].x*(frac));
+					point.y = (points[i].y*(1-frac))+(points[points.size()-i-1].y*(frac));
 					point.z = points2[j].y;
 					model_points[i][j] = point;
 				}
@@ -429,8 +454,8 @@ int main(int argc, char *argv[])
 			for(unsigned int i = 0; i < points.size()/2-1; i++) {
 				for(unsigned int j = 0; j < points2.size()-1; j++) {
 					points3.push_back(model_points[i][j]);
-					points3.push_back(model_points[i+1][j]);
 					points3.push_back(model_points[i][j+1]);
+					points3.push_back(model_points[i+1][j]);
 					
 					points3.push_back(model_points[i+1][j]);
 					points3.push_back(model_points[i][j+1]);
@@ -611,6 +636,35 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader)
 	// attach provided shader objects to this program
 	if (vertexShader)   glAttachShader(programObject, vertexShader);
 	if (fragmentShader) glAttachShader(programObject, fragmentShader);
+
+	// try linking the program with given attachments
+	glLinkProgram(programObject);
+
+	// retrieve link status
+	GLint status;
+	glGetProgramiv(programObject, GL_LINK_STATUS, &status);
+	if (status == GL_FALSE)
+	{
+		GLint length;
+		glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &length);
+		string info(length, ' ');
+		glGetProgramInfoLog(programObject, info.length(), &length, &info[0]);
+		cout << "ERROR linking shader program:" << endl;
+		cout << info << endl;
+	}
+
+	return programObject;
+}
+
+GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint geoShader)
+{
+	// allocate program object name
+	GLuint programObject = glCreateProgram();
+
+	// attach provided shader objects to this program
+	if (vertexShader)   glAttachShader(programObject, vertexShader);
+	if (fragmentShader) glAttachShader(programObject, fragmentShader);
+	if (geoShader) glAttachShader(programObject, geoShader);
 
 	// try linking the program with given attachments
 	glLinkProgram(programObject);

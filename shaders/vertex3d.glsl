@@ -17,8 +17,8 @@ uniform vec3 cameraPos;
 out vec3 colour;
 
 //out vec3 normal;
-out vec3 lightVec;
-out vec3 cameraVec;
+out vec3 light_Vec;
+out vec3 camera_Vec;
 
 void main()
 {
@@ -32,6 +32,6 @@ void main()
 	normal.y = (U.z*V.x) - (U.x*V.z);
 	normal.z = (U.x*V.y) - (U.y*V.x);
 	normal = normalize(normal);*/
-    lightVec = light - VertexPosition;
-    cameraVec = cameraPos - VertexPosition;
+    light_Vec = light - VertexPosition;
+    camera_Vec = cameraPos - VertexPosition;
 }
