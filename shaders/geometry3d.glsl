@@ -26,7 +26,7 @@ void main() {
 	
 	vec3 N = cross(V1, V0);
 	normal = normalize(N);
-	//if(normal.z < 0) normal = -1*normal;
+	if(normal.z < 0) normal = -1*normal;
 	
 	for(int i = 0; i < gl_VerticesIn; i++) {
 		gl_Position = gl_PositionIn[i];

@@ -381,14 +381,14 @@ int main(int argc, char *argv[])
 	vec3 p2_colour = vec3(0, 1, 0);
 	
 	vector<vec3> points3;
-	vec3 p3_colour = vec3(1, 0, 0);
+	vec3 p3_colour = vec3(1, 1, 1);
 	
 	vector<vec3> render_line;
 	vector<vec3> colours;
 	
 	//3D shit
 	mat4 perspectiveMatrix = glm::perspective(PI_F*.4f, float(width)/float(height), .1f, 50.f);//mat4(1.f);	//Fill in with Perspective Matrix
-	Camera cam = Camera(4.f);
+	Camera cam = Camera(1.f);
 	cameraPoint = &cam;
 	vec2 lastCursorPos;
 	float cursorSensitivity = PI_F/200.f;	//PI/hundred pixels
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 			render_model = false;
 			points3.clear();
 			colours.clear();
-			vec3 model_points[points.size()/2][points2.size()];
+			vec3 model_points[points.size()/2][points2.size()*2];
 			for(unsigned int i = 0; i < points.size()/2; i++) {
 				double dist = abs(points2[0].x+points2[points2.size()/2].x)+abs(points2[0].y+points2[points2.size()/2].y);
 				for(unsigned int j = 0; j < points2.size(); j++) {
@@ -450,9 +450,19 @@ int main(int argc, char *argv[])
 					point.z = points2[j].y;
 					model_points[i][j] = point;
 				}
+				for(unsigned int j = points2.size(); j < points2.size()*2; j++) {
+					double frac = abs(points2[j].x+points2[points2.size()/2].x)+abs(points2[j].y+points2[points2.size()/2].y)/dist;
+					vec3 point = vec3();
+					//if(frac < 1 || frac > 0) cout << dist << " " << frac << endl;
+					point.x = (points[i].x*(frac))+(points[points.size()-i-1].x*(1-frac));
+					point.y = (points[i].y*(frac))+(points[points.size()-i-1].y*(1-frac));
+					point.z = -points2[j].y;
+					model_points[i][j] = point;
+				}
 			}
+			//make points into triangles
 			for(unsigned int i = 0; i < points.size()/2-1; i++) {
-				for(unsigned int j = 0; j < points2.size()-1; j++) {
+				for(unsigned int j = 0; j < points2.size()*2-1; j++) {
 					points3.push_back(model_points[i][j]);
 					points3.push_back(model_points[i][j+1]);
 					points3.push_back(model_points[i+1][j]);
@@ -469,6 +479,9 @@ int main(int argc, char *argv[])
 					colours.push_back(p3_colour);
 				}
 			}
+			if(points.size() % 2 == 1) {
+				
+			}
 		}
 		
 		if(press == 1) {
@@ -477,7 +490,7 @@ int main(int argc, char *argv[])
 			// call function to draw our scene
 			RenderScene(&geometry, program);
 		} else if(press == 2) {
-			get_closed_curve(&render_line, &colours, &points2, p2_colour);
+			get_open_curve(&render_line, &colours, &points2, p2_colour);
 			LoadGeometry(&geometry, render_line.data(), colours.data(), render_line.size());
 			// call function to draw our scene
 			RenderScene(&geometry, program);
