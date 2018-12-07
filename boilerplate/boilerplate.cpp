@@ -322,8 +322,12 @@ void ScrollCallback(GLFWwindow* window, double x, double y) {
 	}
 }
 
-vec2 spline(vector<vec2>* points, float i) {
-	return vec2(0, 0);
+void spline(vector<vec2>* out, vector<vec2>* in) {
+	out->push_back(in->at(0));
+	for(unsigned int i = 0; i < in->size(); i++) {
+		out->push_back(in->at(i));
+	}
+	out->push_back(in->at(in->size()-1));
 }
 // ==========================================================================
 // PROGRAM ENTRY POINT
@@ -447,29 +451,53 @@ int main(int argc, char *argv[])
 		//create the model
 		if(render_model) {
 			render_model = false;
-			points3.clear();
+			pointsm.clear();
 			colours.clear();
 			vector<vector<vec3>> model_points;
 			
-			vector<vec2> curve1, curve2;//, curve3;
-			for(float i = 0; i <= 1; i += 0.01) {
-				curve1.push_back(spline(&points, i));
-				curve2.push_back(spline(&points2, i));
-				//curve3.push_back(spline(&points3, i));
-			}
-			for(unsigned int i = 0; i < curve1.size(); i++) {
+			float foo = abs(points2[0].x - points2[points2.size()-1].x);
+			float bar = abs(points2[0].y - points2[points2.size()-1].y);
+			float baz = atan(bar/foo);
+			mat2 rotate = mat2(vec2(cos(baz), -sin(baz)), vec2(sin(baz), cos(baz)));
+			
+			vector<vec2> curve1;
+			vector<vec2> curve2;
+			vector<vec2> curve3;
+			spline(&curve1, &points);
+			spline(&curve2, &points2);
+			spline(&curve3, &points3);
+			unsigned int itt = std::min(curve1.size(), curve2.size());
+			for(unsigned int i = 0; i < itt; i++) {
 				vector<vec3> tmp;
-				model_points.push_back(tmp);
 				float scale = abs(curve1[i].x - curve2[i].x) + abs(curve1[i].y - curve2[i].y);
-				for(float j = 0; j <= 1; j += 0.01) {
-					vec2 point1 = (1-j)*curve1[i] + (j)*curve2[i];
-					model_points[i].push_back(vec3(point1, spline(&points3, j).y*scale));
+				for(unsigned int j = 0; j < curve3.size(); j++) {
+					float foo = (float)j/((float)curve3.size()-1);
+					vec3 point1 = vec3();
+					point1.x = curve3[j].x*scale + ((1-foo)*curve1[i].x + (foo)*curve2[i].x);
+					point1.y = (1-foo)*curve1[i].y + (foo)*curve2[i].y;
+					point1.z = curve3[j].y*scale - curve3[0].y;
+					tmp.push_back(point1);
 				}
+				model_points.push_back(tmp);
+			}
+			for(int i = itt-1; i >= 0; i--) {
+				vector<vec3> tmp;
+				float scale = abs(curve1[i].x - curve2[i].x) + abs(curve1[i].y - curve2[i].y);
+				for(unsigned int j = 0; j < curve3.size(); j++) {
+					float foo = (float)j/((float)curve3.size()-1);
+					vec3 point1 = vec3();
+					point1.x = curve3[j].x*scale + ((1-foo)*curve1[i].x + (foo)*curve2[i].x);
+					point1.y = (1-foo)*curve1[i].y + (foo)*curve2[i].y;
+					point1.z = -curve3[j].y*scale - curve3[0].y;
+					tmp.push_back(point1);
+				}
+				model_points.push_back(tmp);
 			}
 			
 			//make points into triangles
 			for(unsigned int i = 0; i < model_points.size()-1; i++) {
-				for(unsigned int j = 0; j < model_points[i].size()-1; j++) {//cout << model_points.size() << " " << model_points[i].size() << " " << i << " " << j << endl;
+				for(unsigned int j = 0; j < model_points[i].size()-1; j++) {
+					//cout << model_points[i][j].x << " " << model_points[i][j].y << " " << model_points[i][j].z << endl;
 					pointsm.push_back(model_points[i][j]);
 					pointsm.push_back(model_points[i][j+1]);
 					pointsm.push_back(model_points[i+1][j]);
@@ -518,6 +546,10 @@ int main(int argc, char *argv[])
 				movement.x += 1.f;
 			if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 				movement.x -= 1.f;
+			if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+				movement.y += 1.f;
+			if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+				movement.y -= 1.f;
 			cam.move(movement*movementSpeed);
 			light = cam.pos;
 			
