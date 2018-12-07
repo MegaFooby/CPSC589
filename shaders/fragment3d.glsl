@@ -28,6 +28,6 @@ void main(void)
 	
 	vec4 diffuse = FragmentColour*dot(normal, normLightVec);//*5.f/pow(length(lightVec), 2.f); //diffuse
 	vec4 specular = FragmentColour*pow(max(0.f, dot(reflection, normalize(cameraVec))), 100);//*5.f/pow(length(lightVec), 2.f);
-	vec4 ambient = FragmentColour*.1f;
+	vec4 ambient = FragmentColour*.3f;
 	FragmentColour = ambient + diffuse + specular;
 }

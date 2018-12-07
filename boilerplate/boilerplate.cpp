@@ -324,8 +324,9 @@ void ScrollCallback(GLFWwindow* window, double x, double y) {
 
 void spline(vector<vec2>* out, vector<vec2>* in) {
 	out->push_back(in->at(0));
-	for(unsigned int i = 0; i < in->size(); i++) {
-		out->push_back(in->at(i));
+	for(unsigned int i = 1; i < in->size()-1; i++) {
+		vec2 point = in->at(i)*(.5f) + in->at(i-1)*(.25f) + in->at(i+1)*(.25f);
+		out->push_back(point);
 	}
 	out->push_back(in->at(in->size()-1));
 }
