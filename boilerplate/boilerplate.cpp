@@ -341,12 +341,17 @@ float deBoor(int i, float u, int order, float knots[]) {
 }
 
 void spline(vector<vec2>* out, vector<vec2>* in) {
-	float knots[in->size()+2];
-	for(unsigned int i = 0; i < in->size()+2; i++) {
-		knots[i] = (float)i/(float)(in->size()+1);
+	float knots[in->size()+3];
+	knots[0] = 0.f;
+	knots[1] = 0.f;
+	for(unsigned int i = 0; i < in->size()-1; i++) {
+		knots[i+2] = (float)i/(float)(in->size()-2);
+		//cout << knots[i+2] << endl;
 	}
+	knots[in->size()+1] = 1.f;
+	knots[in->size()+2] = 1.f;
 	float step = 0.01f;
-	for(float u = step; u <= 1.f; u+=step) {
+	for(float u = step; u < 1.f; u+=step) {
 		vec2 point = vec2(0, 0);
 		for(unsigned int i = 0; i < in->size(); i++) {
 			point += in->at(i)*deBoor(i, u, 2, knots);
@@ -493,23 +498,18 @@ int main(int argc, char *argv[])
 			vector<vec2> curve2;
 			vector<vec2> curve3;
 			
+			/*points.erase(points.begin());
+			points.pop_back();
+			points2.erase(points2.begin());
+			points2.pop_back();
+			points3.erase(points3.begin());
+			points3.pop_back();*/
+			
 			spline(&curve1, &points);
-			/*curve1.erase(curve1.begin());
-			curve1.pop_back();
-			curve1.erase(curve1.begin());
-			curve1.pop_back();*/
-			
 			spline(&curve2, &points2);
-			/*curve2.erase(curve2.begin());
-			curve2.pop_back();
-			curve2.erase(curve2.begin());
-			curve2.pop_back();*/
-			
 			spline(&curve3, &points3);
-			/*curve3.erase(curve3.begin());
-			curve3.pop_back();
-			curve3.erase(curve3.begin());
-			curve3.pop_back*/
+			
+
 			
 			unsigned int itt = std::min(curve1.size(), curve2.size());
 			for(unsigned int i = 0; i < itt; i++) {
@@ -521,7 +521,7 @@ int main(int argc, char *argv[])
 					vec3 point1 = vec3();
 					point1.x = curve3[j].x*scale + ((1-foo)*curve1[i].x + (foo)*curve2[i].x);
 					point1.y = (1-foo)*curve1[i].y + (foo)*curve2[i].y;
-					point1.z = curve3[j].y*scale - ((curve3[0].y*scale*(1-foo)) + (curve3[curve3.size()-1].y*scale*(foo)));
+					point1.z = 2*(curve3[j].y*scale - ((curve3[0].y*scale*(1-foo)) + (curve3[curve3.size()-1].y*scale*(foo))));
 					tmp.push_back(point1);
 				}
 				model_points.push_back(tmp);
@@ -534,7 +534,7 @@ int main(int argc, char *argv[])
 					vec3 point1 = vec3();
 					point1.x = curve3[j].x*scale + ((1-foo)*curve1[i].x + (foo)*curve2[i].x);
 					point1.y = (1-foo)*curve1[i].y + (foo)*curve2[i].y;
-					point1.z = -(curve3[j].y*scale - ((curve3[0].y*scale*(1-foo)) + (curve3[curve3.size()-1].y*scale*(foo))));
+					point1.z = -2*(curve3[j].y*scale - ((curve3[0].y*scale*(1-foo)) + (curve3[curve3.size()-1].y*scale*(foo))));
 					tmp.push_back(point1);
 				}
 				model_points.push_back(tmp);
