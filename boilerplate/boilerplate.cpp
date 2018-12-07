@@ -472,10 +472,11 @@ int main(int argc, char *argv[])
 				float scale = abs(curve1[i].x - curve2[i].x) + abs(curve1[i].y - curve2[i].y);
 				for(unsigned int j = 0; j < curve3.size(); j++) {
 					float foo = (float)j/((float)curve3.size()-1);
+					//curve3[j] = curve3[j]*rotate;
 					vec3 point1 = vec3();
 					point1.x = curve3[j].x*scale + ((1-foo)*curve1[i].x + (foo)*curve2[i].x);
 					point1.y = (1-foo)*curve1[i].y + (foo)*curve2[i].y;
-					point1.z = curve3[j].y*scale - curve3[0].y;
+					point1.z = curve3[j].y*scale - ((curve3[0].y*scale*(1-foo)) + (curve3[curve3.size()-1].y*scale*(foo)));
 					tmp.push_back(point1);
 				}
 				model_points.push_back(tmp);
@@ -488,7 +489,7 @@ int main(int argc, char *argv[])
 					vec3 point1 = vec3();
 					point1.x = curve3[j].x*scale + ((1-foo)*curve1[i].x + (foo)*curve2[i].x);
 					point1.y = (1-foo)*curve1[i].y + (foo)*curve2[i].y;
-					point1.z = -curve3[j].y*scale - curve3[0].y;
+					point1.z = -(curve3[j].y*scale - curve3[0].y);
 					tmp.push_back(point1);
 				}
 				model_points.push_back(tmp);
