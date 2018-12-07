@@ -322,13 +322,41 @@ void ScrollCallback(GLFWwindow* window, double x, double y) {
 	}
 }
 
+float deBoor(int i, float u, int order, float knots[]) {
+	if(order == 1) {
+		if(knots[i] <= u && u < knots[i+1]) {
+			return 1.f;
+		} else {
+			return 0.f;
+		}
+	}
+	float value = 0;
+	float den = knots[i+order-1]-knots[i];
+	if(den != 0)
+	value += (u-knots[i])/(den) * deBoor(i, u, order-1, knots);
+	den = knots[i+order]-knots[i+1];
+	if(den != 0)
+	value += (knots[i+order]-u)/(den) * deBoor(i+1, u, order-1, knots);
+	return value;
+}
+
 void spline(vector<vec2>* out, vector<vec2>* in) {
-	out->push_back(in->at(0));
-	for(unsigned int i = 1; i < in->size()-1; i++) {
-		vec2 point = in->at(i)*(.5f) + in->at(i-1)*(.25f) + in->at(i+1)*(.25f);
+	float knots[in->size()+2];
+	for(unsigned int i = 0; i < in->size()+2; i++) {
+		knots[i] = (float)i/(float)(in->size()+1);
+	}
+	float step = 0.01f;
+	for(float u = step; u <= 1.f; u+=step) {
+		vec2 point = vec2(0, 0);
+		for(unsigned int i = 0; i < in->size(); i++) {
+			point += in->at(i)*deBoor(i, u, 2, knots);
+		}
 		out->push_back(point);
 	}
-	out->push_back(in->at(in->size()-1));
+	/*for(unsigned int i = 2; i < in->size()-2; i++) {
+		vec2 point = in->at(i)*(.5f) + in->at(i-1)*(.25f) + in->at(i+1)*(.25f);
+		out->push_back(point);
+	}*/
 }
 // ==========================================================================
 // PROGRAM ENTRY POINT
@@ -456,17 +484,33 @@ int main(int argc, char *argv[])
 			colours.clear();
 			vector<vector<vec3>> model_points;
 			
-			float foo = abs(points2[0].x - points2[points2.size()-1].x);
+			/*float foo = abs(points2[0].x - points2[points2.size()-1].x);
 			float bar = abs(points2[0].y - points2[points2.size()-1].y);
 			float baz = atan(bar/foo);
-			mat2 rotate = mat2(vec2(cos(baz), -sin(baz)), vec2(sin(baz), cos(baz)));
+			mat2 rotate = mat2(vec2(cos(baz), -sin(baz)), vec2(sin(baz), cos(baz)));*/
 			
 			vector<vec2> curve1;
 			vector<vec2> curve2;
 			vector<vec2> curve3;
+			
 			spline(&curve1, &points);
+			/*curve1.erase(curve1.begin());
+			curve1.pop_back();
+			curve1.erase(curve1.begin());
+			curve1.pop_back();*/
+			
 			spline(&curve2, &points2);
+			/*curve2.erase(curve2.begin());
+			curve2.pop_back();
+			curve2.erase(curve2.begin());
+			curve2.pop_back();*/
+			
 			spline(&curve3, &points3);
+			/*curve3.erase(curve3.begin());
+			curve3.pop_back();
+			curve3.erase(curve3.begin());
+			curve3.pop_back*/
+			
 			unsigned int itt = std::min(curve1.size(), curve2.size());
 			for(unsigned int i = 0; i < itt; i++) {
 				vector<vec3> tmp;
