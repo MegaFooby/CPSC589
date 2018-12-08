@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 					//curve3[j] = curve3[j]*rotate;
 					vec3 point1 = vec3();
 					point1.x = curve3[j].x*scale + ((1-foo)*curve1[i].x + (foo)*curve2[i].x);
-					point1.y = (1-foo)*curve1[i].y + (foo)*curve2[i].y;
+					point1.y = 2*((1-foo)*curve1[i].y + (foo)*curve2[i].y);
 					point1.z = 2*(curve3[j].y*scale - ((curve3[0].y*scale*(1-foo)) + (curve3[curve3.size()-1].y*scale*(foo))));
 					tmp.push_back(point1);
 				}
@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
 					float foo = (float)j/((float)curve3.size()-1);
 					vec3 point1 = vec3();
 					point1.x = curve3[j].x*scale + ((1-foo)*curve1[i].x + (foo)*curve2[i].x);
-					point1.y = (1-foo)*curve1[i].y + (foo)*curve2[i].y;
+					point1.y = 2*((1-foo)*curve1[i].y + (foo)*curve2[i].y);
 					point1.z = -2*(curve3[j].y*scale - ((curve3[0].y*scale*(1-foo)) + (curve3[curve3.size()-1].y*scale*(foo))));
 					tmp.push_back(point1);
 				}
