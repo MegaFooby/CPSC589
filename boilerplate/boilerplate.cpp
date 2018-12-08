@@ -358,10 +358,12 @@ void spline(vector<vec2>* out, vector<vec2>* in) {
 		}
 		out->push_back(point);
 	}
-	/*for(unsigned int i = 2; i < in->size()-2; i++) {
+}
+void smooth(vector<vec2>* out, vector<vec2>* in) {
+	for(unsigned int i = 1; i < in->size()-1; i++) {
 		vec2 point = in->at(i)*(.5f) + in->at(i-1)*(.25f) + in->at(i+1)*(.25f);
 		out->push_back(point);
-	}*/
+	}
 }
 // ==========================================================================
 // PROGRAM ENTRY POINT
@@ -381,7 +383,7 @@ int main(int argc, char *argv[])
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	int width = 512, height = 512;
+	int width = 512*2, height = 512*2;
 	window = glfwCreateWindow(width, height, "CPSC 453 OpenGL Boilerplate", 0, 0);
 	if (!window) {
 		cout << "Program failed to create GLFW window, TERMINATING" << endl;
@@ -469,17 +471,17 @@ int main(int argc, char *argv[])
 		if(press == 1 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
-			points.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+			points.push_back(vec2(xpos/(width/2)-1, -(ypos/(height/2)-1)));
 		}
 		if(press == 2 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
-			points2.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+			points2.push_back(vec2(xpos/(width/2)-1, -(ypos/(height/2)-1)));
 		}
 		if(press == 3 && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			double xpos, ypos;
 			glfwGetCursorPos(window, &xpos, &ypos);
-			points3.push_back(vec2(xpos/256-1, -(ypos/256-1)));
+			points3.push_back(vec2(xpos/(width/2)-1, -(ypos/(height/2)-1)));
 		}
 		
 		//create the model
@@ -494,6 +496,9 @@ int main(int argc, char *argv[])
 			float baz = atan(bar/foo);
 			mat2 rotate = mat2(vec2(cos(baz), -sin(baz)), vec2(sin(baz), cos(baz)));*/
 			
+			vector<vec2> curve21;
+			vector<vec2> curve22;
+			vector<vec2> curve23;
 			vector<vec2> curve1;
 			vector<vec2> curve2;
 			vector<vec2> curve3;
@@ -505,11 +510,13 @@ int main(int argc, char *argv[])
 			points3.erase(points3.begin());
 			points3.pop_back();*/
 			
-			spline(&curve1, &points);
-			spline(&curve2, &points2);
-			spline(&curve3, &points3);
+			spline(&curve21, &points);
+			spline(&curve22, &points2);
+			spline(&curve23, &points3);
+			smooth(&curve1, &curve21);
+			smooth(&curve2, &curve22);
+			smooth(&curve3, &curve23);
 			
-
 			
 			unsigned int itt = std::min(curve1.size(), curve2.size());
 			for(unsigned int i = 0; i < itt; i++) {
