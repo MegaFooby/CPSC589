@@ -1,0 +1,14 @@
+Compilation:
+make
+
+Controls:
+1   enables drawing of the first base curve
+2   enables drawing of the second base curve
+3   enables drawing of the bump curve
+4   view model
+
+When viewing the model, use WASD Space and LShift to move the camera
+Use LMB and the mouse to rotate the camera
+
+Known bugs:
+Crashes when trying to view model with curves not drawn
