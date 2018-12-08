@@ -7,6 +7,8 @@ Controls:
 3   enables drawing of the bump curve
 4   view model
 
+When editing a curve, press C to clear the curve
+
 When viewing the model, use WASD Space and LShift to move the camera
 Use LMB and the mouse to rotate the camera
 
